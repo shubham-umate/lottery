@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -204,7 +207,7 @@ func Participate(c *fiber.Ctx) error {
 		DB.Create(&participant)
 		newCount := lottery.Participants + 1
 
-		DB.Update("Participants", newCount)
+		DB.Model(&lottery).Update("participants", newCount)
 	} else if lottery.Participants == lottery.Limit {
 		c.Status(fiber.StatusConflict)
 		return c.JSON(fiber.Map{
@@ -222,17 +225,6 @@ func CreateLottery(c *fiber.Ctx) error {
 		return err
 	}
 
-	tempPar, err := strconv.ParseInt(data["participants"], 10, 64)
-
-	if err != nil {
-		c.Status(fiber.StatusConflict)
-		return c.JSON(fiber.Map{
-			"message": "Type conversion failed",
-		})
-	}
-
-	participants := int(tempPar)
-
 	tempLim, err := strconv.ParseInt(data["limit"], 10, 64)
 	if err != nil {
 		c.Status(fiber.StatusConflict)
@@ -244,9 +236,8 @@ func CreateLottery(c *fiber.Ctx) error {
 	limit := int(tempLim)
 
 	lottery := Lottery{
-		LotteryName:  data["lotteryName"],
-		Limit:        limit,
-		Participants: participants,
+		LotteryName: data["lotteryName"],
+		Limit:       limit,
 	}
 
 	var existingLottery Lottery
@@ -263,5 +254,66 @@ func CreateLottery(c *fiber.Ctx) error {
 
 		return c.JSON(lottery)
 	}
+
+}
+
+func ChooseWinner(c *fiber.Ctx) error {
+
+	var data map[string]string
+
+	if err := c.BodyParser(&data); err != nil {
+		return err
+	}
+
+	var lottery Lottery
+	DB.Where("id=?", data["lotteryId"]).First(&lottery)
+
+	var winner Winner
+	if lottery.Winner == 0 {
+		if lottery.Limit == lottery.Participants {
+
+			myRandomNum, err := rand.Int(rand.Reader, big.NewInt(int64(lottery.Limit)))
+
+			for int(myRandomNum.Int64()) <= 0 {
+				myRandomNum, err = rand.Int(rand.Reader, big.NewInt(int64(lottery.Limit)))
+
+			}
+			if err != nil {
+				c.Status(fiber.StatusConflict)
+				return c.JSON(fiber.Map{
+					"message": "Type conversion failed",
+				})
+			}
+			var user User
+
+			DB.Where("id = ?", int(myRandomNum.Int64())).First(&user)
+			fmt.Printf("Generated Random no %v and Type %T\n", myRandomNum, myRandomNum)
+			DB.Model(&lottery).Update("winner", user.Id)
+			winner = Winner{
+				LotteryId:   lottery.Id,
+				WinnerEmail: user.Email,
+			}
+			DB.Create(&winner)
+
+		} else if lottery.Limit > lottery.Participants {
+			c.Status(fiber.StatusBadGateway)
+			return c.JSON(fiber.Map{
+
+				"message": "Lottery is still open and waiting for more participants",
+			})
+		}
+	} else if lottery.Winner != 0 {
+
+		winMsg := "Winner already opted Lottery winner is" + string(rune(lottery.Winner))
+
+		c.Status(fiber.StatusBadGateway)
+		return c.JSON(fiber.Map{
+
+			"message": winMsg,
+		})
+
+	}
+
+	return c.JSON(&winner)
 
 }

@@ -12,4 +12,5 @@ func Setup(app *fiber.App) {
 	app.Post("/api/logout", Logout)
 	app.Post("/api/participate", Participate)
 	app.Post("/api/lottery", CreateLottery)
+	app.Post("/api/winner", ChooseWinner)
 }
