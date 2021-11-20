@@ -19,5 +19,5 @@ func Connect() {
 	}
 
 	DB = connection
-	connection.AutoMigrate(&User{})
+	connection.AutoMigrate(&User{},&Lottery{},&Participant{})
 }

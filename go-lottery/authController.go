@@ -25,9 +25,19 @@ func Register(c *fiber.Ctx) error {
 		Password: password,
 	}
 
-	DB.Create(&user)
+	var existingUser User
+	DB.Where("email=?", data["email"]).First(&existingUser)
 
-	return c.JSON(user)
+	if existingUser.Email == data["email"] {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"message": "User with provided emailId already registerd. Please login to proceed.",
+		})
+	} else {
+		DB.Create(&user)
+
+		return c.JSON(user)
+	}
 
 }
 
@@ -128,38 +138,58 @@ func Participate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&data); err != nil {
 		return err
 	}
-	cookie := c.Cookies("jwt")
+	// cookie := c.Cookies("jwt")
 
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(SecretKey), nil
-	})
+	// token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+	// 	return []byte(SecretKey), nil
+	// })
 
-	if err != nil {
-		c.Status(fiber.StatusUnauthorized)
+	// if err != nil {
+	// 	c.Status(fiber.StatusUnauthorized)
+	// 	return c.JSON(fiber.Map{
+	// 		"message": "unauthenticated",
+	// 	})
+	// }
+
+	// claims := token.Claims.(*jwt.StandardClaims)
+
+	// var exitingLottery Lottery
+
+	// DB.Where("id = ?", claims.Issuer).First(&exitingLottery)
+
+	var user User
+	DB.Where("email = ?", data["participantEmail"]).First(&user)
+
+	if user.Email != data["participantEmail"] {
+		c.Status(fiber.StatusConflict)
 		return c.JSON(fiber.Map{
-			"message": "unauthenticated",
+			"message": "Register the user first",
 		})
 	}
 
-	claims := token.Claims.(*jwt.StandardClaims)
+	var existingParticipants []Participant
 
-	var user User
-
-	DB.Where("id = ?", claims.Issuer).First(&user)
-
-	var existingParticipant Participant
-
-	DB.Where("ParticipantEmail = ?", user.Email).First(&existingParticipant)
+	DB.Where("lottery_id = ?", data["lotteryId"]).Or("participant_email = ?", data["participantEmail"]).Find(&existingParticipants)
 
 	temp, err := strconv.ParseUint(data["lotteryId"], 10, 64)
 
 	if err != nil {
-		c.Status(fiber.StatusUnauthorized)
+		c.Status(fiber.StatusConflict)
 		return c.JSON(fiber.Map{
 			"message": "Type conversion failed",
 		})
 	}
+
 	lotteryId := uint(temp)
+
+	for _, participant := range existingParticipants {
+		if participant.LotteryId == lotteryId && participant.ParticipantEmail == data["participantEmail"] {
+			c.Status(fiber.StatusConflict)
+			return c.JSON(fiber.Map{
+				"message": "Participant has already opted for this lottery.",
+			})
+		}
+	}
 
 	participant := Participant{
 		LotteryId:        lotteryId,
@@ -170,7 +200,68 @@ func Participate(c *fiber.Ctx) error {
 
 	DB.Where("id=?", lotteryId).First(&lottery)
 
-	DB.Create(&participant)
+	if lottery.Participants < lottery.Limit {
+		DB.Create(&participant)
+		newCount := lottery.Participants + 1
 
-	return c.JSON(user)
+		DB.Update("Participants", newCount)
+	} else if lottery.Participants == lottery.Limit {
+		c.Status(fiber.StatusConflict)
+		return c.JSON(fiber.Map{
+			"message": "Lottery is closed for participation. Winner will be disclosed soon. You will be notified on opening of new lottery.",
+		})
+	}
+
+	return c.JSON(participant)
+}
+
+func CreateLottery(c *fiber.Ctx) error {
+	var data map[string]string
+
+	if err := c.BodyParser(&data); err != nil {
+		return err
+	}
+
+	tempPar, err := strconv.ParseInt(data["participants"], 10, 64)
+
+	if err != nil {
+		c.Status(fiber.StatusConflict)
+		return c.JSON(fiber.Map{
+			"message": "Type conversion failed",
+		})
+	}
+
+	participants := int(tempPar)
+
+	tempLim, err := strconv.ParseInt(data["limit"], 10, 64)
+	if err != nil {
+		c.Status(fiber.StatusConflict)
+		return c.JSON(fiber.Map{
+			"message": "Type conversion failed",
+		})
+	}
+
+	limit := int(tempLim)
+
+	lottery := Lottery{
+		LotteryName:  data["lotteryName"],
+		Limit:        limit,
+		Participants: participants,
+	}
+
+	var existingLottery Lottery
+
+	DB.Where("lottery_name=?", data["lotteryName"]).First(&existingLottery)
+
+	if existingLottery.LotteryName == lottery.LotteryName {
+		c.Status(fiber.StatusBadGateway)
+		return c.JSON(fiber.Map{
+			"message": "Lottery already created",
+		})
+	} else {
+		DB.Create(&lottery)
+
+		return c.JSON(lottery)
+	}
+
 }
