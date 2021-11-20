@@ -121,3 +121,56 @@ func Logout(c *fiber.Ctx) error {
 		"message": "success",
 	})
 }
+
+func Participate(c *fiber.Ctx) error {
+	var data map[string]string
+
+	if err := c.BodyParser(&data); err != nil {
+		return err
+	}
+	cookie := c.Cookies("jwt")
+
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(SecretKey), nil
+	})
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{
+			"message": "unauthenticated",
+		})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user User
+
+	DB.Where("id = ?", claims.Issuer).First(&user)
+
+	var existingParticipant Participant
+
+	DB.Where("ParticipantEmail = ?", user.Email).First(&existingParticipant)
+
+	temp, err := strconv.ParseUint(data["lotteryId"], 10, 64)
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{
+			"message": "Type conversion failed",
+		})
+	}
+	lotteryId := uint(temp)
+
+	participant := Participant{
+		LotteryId:        lotteryId,
+		ParticipantEmail: data["participantEmail"],
+	}
+
+	var lottery Lottery
+
+	DB.Where("id=?", lotteryId).First(&lottery)
+
+	DB.Create(&participant)
+
+	return c.JSON(user)
+}
