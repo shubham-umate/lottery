@@ -287,6 +287,8 @@ func ChooseWinner(c *fiber.Ctx) error {
 			var user User
 
 			DB.Where("id = ?", int(myRandomNum.Int64())).First(&user)
+
+			// TODO: Generate radom number based on no of participants
 			fmt.Printf("Generated Random no %v and Type %T\n", myRandomNum, myRandomNum)
 			DB.Model(&lottery).Update("winner", user.Id)
 			winner = Winner{
@@ -304,7 +306,9 @@ func ChooseWinner(c *fiber.Ctx) error {
 		}
 	} else if lottery.Winner != 0 {
 
-		winMsg := "Winner already opted Lottery winner is" + string(rune(lottery.Winner))
+		var user User
+		DB.Where("id = ?", lottery.Winner).First(&user)
+		winMsg := "Winner already opted Lottery winner is " + user.Email
 
 		c.Status(fiber.StatusBadGateway)
 		return c.JSON(fiber.Map{
