@@ -288,7 +288,7 @@ func ChooseWinner(c *fiber.Ctx) error {
 
 			DB.Where("id = ?", int(myRandomNum.Int64())).First(&user)
 
-			// TODO: Generate radom number based on no of participants
+			// TODO: Generate random number based on no of participants
 			fmt.Printf("Generated Random no %v and Type %T\n", myRandomNum, myRandomNum)
 			DB.Model(&lottery).Update("winner", user.Id)
 			winner = Winner{

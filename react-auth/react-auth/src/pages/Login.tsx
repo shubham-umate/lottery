@@ -1,17 +1,21 @@
 import React, { SyntheticEvent, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
-import Home from './Home';
+import {  Route, Routes } from 'react-router-dom';
+
+
+
+
+
 
 const Login = (props: {setName : (name:string)=> void}) => {
 
   const [email,setEmail] = useState('');
   const [password,setPassword] = useState('');
   const [redirect, setRedirect] = useState(false);
-  const [name,setName] = useState('');
+
 
   
 
-  const submit = async(e: SyntheticEvent) => {
+  const submit = async (e: SyntheticEvent) => {
     
     e.preventDefault()
     
@@ -24,28 +28,17 @@ const Login = (props: {setName : (name:string)=> void}) => {
         password
       })
     });
-    
-    const content = await response.json();
-    setRedirect(true)
-    setName(content.name)
-
-    console.log("set name:",name);
-
-    console.log("content name:", content.name);
-    
-    
-    props.setName(content.name);
-    console.log("props name:", content.name);
-   
-    
-    
+   const content =await response.json();
+   setRedirect(true)
+   props.setName(content.name)
+      
   };
-
+  
   if(redirect){
     
     return (
       <Routes>
-        <Route path="/" element={<Home name={name}/>}/>
+        <Route path="*/home"/>
       </Routes>
     );
   }; 

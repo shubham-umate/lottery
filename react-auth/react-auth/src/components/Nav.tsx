@@ -1,14 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-
-
-
-
-
+import { Link, Route, Routes } from 'react-router-dom';
 
 
 const Nav = (props : {name: string, setName : (name:string)=> void}) => {
-
+  console.log("Name in nav", props.name)
   const logout = async () =>{
     await fetch('http://localhost:8000/api/logout',{
       method: 'POST',
@@ -18,18 +13,18 @@ const Nav = (props : {name: string, setName : (name:string)=> void}) => {
     });
 
     props.setName('');
-    // console.log("Hitting logout")
+    console.log("Hitting logout", props.name)
   
-    // return (
-    //   <Routes>
-    //     <Route path="/login"/>
-    //   </Routes>
-    // );
+    return (
+      <Routes>
+        <Route path="/login"/>
+      </Routes>
+    );
   
   }
 
   let menu;
-  if(props.name === ''){
+  if(props.name === '' || props.name === undefined){
     menu = (
       <ul className="navbar-nav me-auto mb-2 mb-md-0">
       <li className="nav-item">
@@ -40,12 +35,14 @@ const Nav = (props : {name: string, setName : (name:string)=> void}) => {
       </li>
       </ul>
     )
-  } else{
+  } else {
     menu = (
+      
       <ul className="navbar-nav me-auto mb-2 mb-md-0">
-      <li className="nav-item">
-                <Link to="/login" className="nav-link active" onClick={logout}>Logout</Link>
-              </li>
+        
+        <li className="nav-item">
+          <Link to="/login" className="nav-link active" onClick={logout}>Logout {props.name}</Link>
+        </li>
       </ul>
     )
   }
@@ -58,7 +55,7 @@ const Nav = (props : {name: string, setName : (name:string)=> void}) => {
          
           <div >
            
-         {menu}
+            {menu}
            
           </div>
         </div>

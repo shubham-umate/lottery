@@ -21,8 +21,11 @@ function App() {
               });
 
               const content = await response.json();
+              
+              console.log("Name in App", content.name)
               setName(content.name)
           }
+          
       )();
   });
   
@@ -30,20 +33,23 @@ function App() {
 
 
     <div className="App">
-      
-        <BrowserRouter>
+      <BrowserRouter>
+       
       <Nav name={name} setName={setName}/>
+      
       <main className="form-signin">
-     <Routes>
-      <Route  path ="*/" element={ <Home name={name}/>}/>
-         <Route path ="/register" element={<Register/>}/>
-         <Route path ="/login" element={<Login setName={setName}/>}/>
-         </Routes>
-          
+      
+      <Routes>
+        <Route path="/" element={ <Home name={name}/>}/>
+        <Route path ="/register" element={<Register/>}/>
+        <Route path ="/login/*" element={<Login setName={setName}/>}/>
+      </Routes>
+      
         
       </main>
       </BrowserRouter>
     </div>
+    
   );
 }
 
